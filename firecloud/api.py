@@ -1042,7 +1042,10 @@ def list_submissions(namespace, workspace):
     return __get(uri)
 
 def create_submission(wnamespace, workspace, cnamespace, config,
-                      entity=None, etype=None, expression=None, use_callcache=True):
+                      entity=None, etype=None, expression=None, use_callcache=True,
+                      memory_retry_multiplier=None, delete_intermediate_outputs=False,
+                      use_reference_disks=False, workflow_failure_mode=None,
+                      user_comment=None):
     """Submit job in FireCloud workspace.
 
     Args:
@@ -1057,6 +1060,14 @@ def create_submission(wnamespace, workspace, cnamespace, config,
         expression (str): Instead of using entity as the root entity,
             evaluate the root entity from this expression.
         use_callcache (bool): use call cache if applicable (default: true)
+        memory_retry_multiplier (float): when retrying tasks that fail with OutOfMemory error,
+            scale the memory request by this factor on each retry
+        delete_intermediate_outputs (bool): Enable Delete Intermediate Outputs (default: false)
+        use_reference_disks (bool): Use a reference disk image if available rather than
+            localizing reference inputs (default: false)
+        workflow_failure_mode (str): Cromwell workflow failure mode, ie. ContinueWhilePossible
+        user_comment (str): Optional user comment field
+
 
     Swagger:
         https://api.firecloud.org/#!/Submissions/createSubmission
@@ -1066,7 +1077,9 @@ def create_submission(wnamespace, workspace, cnamespace, config,
     body = {
         "methodConfigurationNamespace" : cnamespace,
         "methodConfigurationName" : config,
-         "useCallCache" : use_callcache
+         "useCallCache" : use_callcache,
+         "deleteIntermediateOutputFiles" : delete_intermediate_outputs,
+         "useReferenceDisks": use_reference_disks
     }
 
     if etype:
@@ -1077,6 +1090,15 @@ def create_submission(wnamespace, workspace, cnamespace, config,
 
     if expression:
         body['expression'] = expression
+
+    if memory_retry_multiplier:
+        body['memoryRetryMultiplier'] = memory_retry_multiplier
+
+    if workflow_failure_mode:
+        body['workflowFailureMode'] = workflow_failure_mode
+
+    if user_comment:
+        body['userComment'] = user_comment
 
     return __post(uri, json=body)
 
