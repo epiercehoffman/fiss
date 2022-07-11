@@ -84,15 +84,18 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True, ba
                                                     delete_intermediate_outputs=True, user_comment=comment)
           status_text = "succeeded"
           waiting_text = ""
+          wait = False
           if sub_response.ok:
             if i < (num_batches - 1):
               waiting_text = f" Waiting {interval} minutes for next submission."
-            time.sleep(interval * 60)
+              wait = True
           else:
             status_text = "failed"
             to_retry.append(batch)
           logging.info(f"Submission of {current} for {batch} {status_text}." + waiting_text + "..")
           out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\t{sub_response.ok}\t{sub_response.text}\n")
+          if wait:
+            time.sleep(interval * 60)
       elif batch_status == NOT_YET:
         to_retry.append(batch)
   if retry and len(to_retry) > 0:
@@ -107,8 +110,8 @@ def main():
                       help="Current workflow to submit")
   parser.add_argument("-p", "--previous", required=True,
                       help="Previous workflow, check for success before submitting current")
-  parser.add_argument("-i", "--interval", required=True,
-                      help="Submission interval, in minutes")
+  parser.add_argument("-i", "--interval", required=True, type=int,
+                      help="Submission interval, in minutes (int)")
   parser.add_argument("-n", "--note", required=False, default=None,
                       help="Submission comment text")
   parser.add_argument("-b", "--batches", required=False, default=None,
