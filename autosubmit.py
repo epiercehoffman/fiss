@@ -72,18 +72,19 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True, ba
   to_retry = []
   with open(output_log, 'a') as out:
     if retry:
-      out.write("batch\ttimestamp\tworkflow\tsubmission_ok\tsubmission_response_text\n")
+      out.write("batch\ttimestamp\tworkflow\tsubmission_response\n")
     for i, batch in enumerate(batches):
       batch_status = ready_to_submit(batch, current, previous)
       if batch_status == READY:
         logging.info(f"Ready to submit {current} for {batch} (dry run = {dry_run})")
         if dry_run:
-          out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\tFalse\tDryRun\n")
+          out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\tDryRun\n")
         else:
           sub_response = fiss_api.create_submission(NAMESPACE, WORKSPACE, NAMESPACE, current, batch, 'sample_set',
                                                     delete_intermediate_outputs=True, user_comment=comment)
           status_text = "succeeded"
           waiting_text = ""
+          response_log_text = "Success"
           wait = False
           if sub_response.ok:
             if i < (num_batches - 1):
@@ -91,9 +92,10 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True, ba
               wait = True
           else:
             status_text = "failed"
+            response_log_text = sub_response.text
             to_retry.append(batch)
           logging.info(f"Submission of {current} for {batch} {status_text}." + waiting_text + "..")
-          out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\t{sub_response.ok}\t{sub_response.text}\n")
+          out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\t{response_log_text}\n")
           if wait:
             time.sleep(interval * 60)
       elif batch_status == NOT_YET:
