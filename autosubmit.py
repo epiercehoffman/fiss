@@ -51,7 +51,7 @@ def ready_to_submit(batch, current, previous):
   return (batch in ready)
 
 
-def auto_submit(current, previous, interval, comment, output_log, retry=True, batches=None, dry_run=False, batches=None):
+def auto_submit(current, previous, interval, comment, output_log, retry=True, batches=None, dry_run=False):
   if batches is None:
     batches = [f"batch{i}_AoUSVPhaseI" for i in range(1,25)]
   num_batches = len(batches)
