@@ -56,11 +56,11 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True, ba
   to_retry = []
   with open(output_log, 'a') as out:
     if retry:
-      output_log.write("batch\ttimestamp\tworkflow\tsubmission_ok\tsubmission_response_text\n")
+      out.write("batch\ttimestamp\tworkflow\tsubmission_ok\tsubmission_response_text\n")
     for batch in batches:
       if ready_to_submit(batch, current, previous):
         if dry_run:
-          output_log.write(f"{batch}\t{datetime.datetime.now()}\t{current}\tFalse\tDryRun\n")
+          out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\tFalse\tDryRun\n")
         else:
           sub_response = fiss_api.create_submission(NAMESPACE, WORKSPACE, NAMESPACE, current, batch, 'sample_set',
                                                   delete_intermediate_outputs=True, user_comment=comment)
@@ -68,7 +68,7 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True, ba
             time.sleep(interval)
           else:
             to_retry.append(batch)
-          output_log.write(f"{batch}\t{datetime.datetime.now()}\t{current}\t{sub_response.ok}\t{sub_response.text}\n")
+          out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\t{sub_response.ok}\t{sub_response.text}\n")
       else:
         to_retry.append(batch)
   if retry and len(to_retry) > 0:
