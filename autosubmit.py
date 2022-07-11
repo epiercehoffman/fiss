@@ -7,6 +7,7 @@ import sys
 syspath = sys.path
 sys.path = ['/home/jupyter/AoU_DRC_WGS_GATK-SV-Phase1/edit/fiss'] + syspath
 import emmafiss.api as fiss_api
+from emmafiss.errors import FireCloudServerError
 
 
 PROJECT = os.environ['GOOGLE_PROJECT']
@@ -15,10 +16,15 @@ ws_bucket = os.environ['WORKSPACE_BUCKET']
 NAMESPACE = os.environ['WORKSPACE_NAMESPACE']
 
 
+READY = 0
+NOT_YET = 1
+ALREADY_SUBMITTED = 2
+
+
 def get_entities_submitted_for_workflow(namespace, workspace, workflow, require_success=False):
   response = fiss_api.list_submissions(NAMESPACE, WORKSPACE)
   if not response.ok:
-    logger.error(f"Failed to list submissions in {namespace}/{workspace}")
+    logging.error(f"Failed to list submissions in {namespace}/{workspace}")
     raise FireCloudServerError(response.status_code, response.text)
   result = response.json()
   workflow_submissions = [sub for sub in result if sub['methodConfigurationName'] == workflow]
@@ -28,7 +34,7 @@ def get_entities_submitted_for_workflow(namespace, workspace, workflow, require_
     if require_success or sum(w_sub['workflowStatuses'].values()) > 1:
       detailed_response = fiss_api.get_submission(namespace, workspace, w_sub['submissionId'])
       if not detailed_response.ok:
-          logger.error(f"Failed to get submission {w_sub['submissionId']} in workspace {namespace}/{workspace}.")
+          logging.error(f"Failed to get submission {w_sub['submissionId']} in workspace {namespace}/{workspace}.")
           raise FireCloudServerError(detailed_response.status_code, detailed_response.text)
       detailed = detailed_response.json()
     if sum(w_sub['workflowStatuses'].values()) > 1:
@@ -44,29 +50,38 @@ def get_entities_submitted_for_workflow(namespace, workspace, workflow, require_
 
 
 def ready_to_submit(batch, current, previous):
-  logging.info(f"Checking if {batch} has completed {previous} successfully and has not yet been submitted for {current}...")
+  logging.info(f"Checking {batch} status for previous ({previous}) and current ({current}) workflow...")
   current_submitted = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, '07a-FilterBatchSites')
   previous_succeeded = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, '06-GenerateBatchMetrics')
-  ready = previous_succeeded - current_submitted
-  return (batch in ready)
+  if batch in previous_succeeded:
+    if batch in current_submitted:
+      logging.info(f"{batch} already submitted for {current}")
+      return ALREADY_SUBMITTED
+    else:
+      logging.info(f"{batch} is ready to submit for {current}")
+      return READY
+  else:
+    logging.info(f"{batch} has not yet successfully completed {previous}")
+    return NOT_YET
 
 
 def auto_submit(current, previous, interval, comment, output_log, retry=True, batches=None, dry_run=False):
   if batches is None:
-    batches = [f"batch{i}_AoUSVPhaseI" for i in range(1,25)]
+    batches = [f"batch{i}_AoUSVPhaseI" for i in range(1, 25)]
   num_batches = len(batches)
   to_retry = []
   with open(output_log, 'a') as out:
     if retry:
       out.write("batch\ttimestamp\tworkflow\tsubmission_ok\tsubmission_response_text\n")
     for i, batch in enumerate(batches):
-      if ready_to_submit(batch, current, previous):
+      batch_status = ready_to_submit(batch, current, previous)
+      if batch_status == READY:
         logging.info(f"Ready to submit {current} for {batch} (dry run = {dry_run})")
         if dry_run:
           out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\tFalse\tDryRun\n")
         else:
           sub_response = fiss_api.create_submission(NAMESPACE, WORKSPACE, NAMESPACE, current, batch, 'sample_set',
-                                                  delete_intermediate_outputs=True, user_comment=comment)
+                                                    delete_intermediate_outputs=True, user_comment=comment)
           status_text = "succeeded"
           waiting_text = ""
           if sub_response.ok:
@@ -78,11 +93,10 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True, ba
             to_retry.append(batch)
           logging.info(f"Submission of {current} for {batch} {status_text}." + waiting_text + "..")
           out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\t{sub_response.ok}\t{sub_response.text}\n")
-      else:
+      elif batch_status == NOT_YET:
         to_retry.append(batch)
   if retry and len(to_retry) > 0:
     auto_submit(current, previous, interval, comment, output_log, retry=False, batches=to_retry, dry_run=dry_run)
-
 
 
 def main():
@@ -118,9 +132,8 @@ def main():
   if args.batches is not None:
     batches = args.batches.split(',')
   auto_submit(args.current, args.previous, args.interval, args.note, args.output_log, dry_run=args.dry_run,
-    batches=batches)
+              batches=batches)
 
 
 if __name__ == "__main__":
     main()
-
