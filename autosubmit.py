@@ -30,7 +30,7 @@ def get_entities_submitted_for_workflow(namespace, workspace, workflow, require_
       if not detailed_response.ok:
           logger.error(f"Failed to get submission {w_sub['submissionId']} in workspace {namespace}/{workspace}.")
           raise FireCloudServerError(detailed_response.status_code, detailed_response.text)
-        detailed = detailed_response.json()
+      detailed = detailed_response.json()
     if sum(w_sub['workflowStatuses'].values()) > 1:
       for w in detailed['workflows']:
           if require_success and w['status'] != "Succeeded":
