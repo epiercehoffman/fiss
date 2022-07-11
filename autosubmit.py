@@ -51,8 +51,8 @@ def get_entities_submitted_for_workflow(namespace, workspace, workflow, require_
 
 def ready_to_submit(batch, current, previous):
   logging.info(f"Checking {batch} status for previous ({previous}) and current ({current}) workflow...")
-  current_submitted = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, '07a-FilterBatchSites')
-  previous_succeeded = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, '06-GenerateBatchMetrics')
+  current_submitted = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, current)
+  previous_succeeded = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, previous, require_success=True)
   if batch in previous_succeeded:
     if batch in current_submitted:
       logging.info(f"{batch} already submitted for {current}")
