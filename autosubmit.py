@@ -52,8 +52,10 @@ def get_entities_submitted_for_workflow(namespace, workspace, workflow, require_
 def ready_to_submit(batch, current, previous):
   logging.info(f"Checking {batch} status for previous ({previous}) and current ({current}) workflow...")
   current_submitted = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, current)
-  previous_succeeded = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, previous, require_success=True)
-  if batch in previous_succeeded:
+  previous_succeeded = None
+  if previous is not None:
+    previous_succeeded = get_entities_submitted_for_workflow(NAMESPACE, WORKSPACE, previous, require_success=True)
+  if previous is None or batch in previous_succeeded:
     if batch in current_submitted:
       logging.info(f"{batch} already submitted for {current}")
       return ALREADY_SUBMITTED
@@ -110,7 +112,7 @@ def main():
   parser.add_argument("-o", "--output-log", required=True, help="Output log file")
   parser.add_argument("-c", "--current", required=True,
                       help="Current workflow to submit")
-  parser.add_argument("-p", "--previous", required=True,
+  parser.add_argument("-p", "--previous", required=False, default=None,
                       help="Previous workflow, check for success before submitting current")
   parser.add_argument("-i", "--interval", required=True, type=int,
                       help="Submission interval, in minutes (int)")
