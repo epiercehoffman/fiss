@@ -4,6 +4,7 @@ import os
 import datetime
 import logging
 import sys
+import logging
 syspath = sys.path
 sys.path = ['/home/jupyter/AoU_DRC_WGS_GATK-SV-Phase1/edit/fiss'] + syspath
 import emmafiss.api as fiss_api
@@ -21,21 +22,39 @@ NOT_YET = 1
 ALREADY_SUBMITTED = 2
 
 
+@retry(reraise=True,
+       retry=retry_if_exception_type(FireCloudServerError),
+       stop=stop_after_attempt(5),
+       wait=wait_exponential(multiplier=4, min=10, max=60),
+       after=after_log(logger, logging.DEBUG),
+       before_sleep=before_sleep_log(logger, logging.INFO))
+def _fapi_list_submissions(namespace, workspace):
+  response = fiss_api.list_submissions(namespace, workspace)
+  fiss_api._check_response_code(response, 200)
+  return response
+
+
+@retry(reraise=True,
+       retry=retry_if_exception_type(FireCloudServerError),
+       stop=stop_after_attempt(5),
+       wait=wait_exponential(multiplier=4, min=10, max=60),
+       after=after_log(logger, logging.DEBUG),
+       before_sleep=before_sleep_log(logger, logging.INFO))
+def _fapi_get_submission(namespace, workspace, submission_id):
+  response = fiss_api.get_submission(namespace, workspace, w_sub['submissionId'])
+  fiss_api._check_response_code(response, 200)
+  return response
+
+
 def get_entities_submitted_for_workflow(namespace, workspace, workflow, require_success=False):
-  response = fiss_api.list_submissions(NAMESPACE, WORKSPACE)
-  if not response.ok:
-    logging.error(f"Failed to list submissions in {namespace}/{workspace}")
-    raise FireCloudServerError(response.status_code, response.text)
+  response = _fapi_list_submissions(NAMESPACE, WORKSPACE)
   result = response.json()
   workflow_submissions = [sub for sub in result if sub['methodConfigurationName'] == workflow]
   entities_submitted = set()
   for w_sub in workflow_submissions:
     detailed = None
     if require_success or sum(w_sub['workflowStatuses'].values()) > 1:
-      detailed_response = fiss_api.get_submission(namespace, workspace, w_sub['submissionId'])
-      if not detailed_response.ok:
-          logging.error(f"Failed to get submission {w_sub['submissionId']} in workspace {namespace}/{workspace}.")
-          raise FireCloudServerError(detailed_response.status_code, detailed_response.text)
+      detailed_response = _fapi_get_submission(namespace, workspace, w_sub['submissionId'])
       detailed = detailed_response.json()
     if sum(w_sub['workflowStatuses'].values()) > 1:
       for w in detailed['workflows']:
