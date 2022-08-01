@@ -5,6 +5,7 @@ import datetime
 import logging
 import sys
 import logging
+from tenacity import retry, after_log, before_sleep_log, retry_if_exception_type, stop_after_attempt, wait_exponential
 syspath = sys.path
 sys.path = ['/home/jupyter/AoU_DRC_WGS_GATK-SV-Phase1/edit/fiss'] + syspath
 import emmafiss.api as fiss_api
