@@ -12,6 +12,10 @@ import emmafiss.api as fiss_api
 from emmafiss.errors import FireCloudServerError
 
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+
 PROJECT = os.environ['GOOGLE_PROJECT']
 WORKSPACE = os.environ['WORKSPACE_NAME']
 ws_bucket = os.environ['WORKSPACE_BUCKET']
