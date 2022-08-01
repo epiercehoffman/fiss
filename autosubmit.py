@@ -6,6 +6,7 @@ import logging
 import sys
 import logging
 from tenacity import retry, after_log, before_sleep_log, retry_if_exception_type, stop_after_attempt, wait_exponential
+import requests
 syspath = sys.path
 sys.path = ['/home/jupyter/AoU_DRC_WGS_GATK-SV-Phase1/edit/fiss'] + syspath
 import emmafiss.api as fiss_api
@@ -28,7 +29,7 @@ ALREADY_SUBMITTED = 2
 
 
 @retry(reraise=True,
-       retry=retry_if_exception_type(FireCloudServerError),
+       retry=retry_if_exception_type((FireCloudServerError, requests.ConnectionError)),
        stop=stop_after_attempt(5),
        wait=wait_exponential(multiplier=4, min=10, max=60),
        after=after_log(logger, logging.DEBUG),
@@ -40,7 +41,7 @@ def _fapi_list_submissions(namespace, workspace):
 
 
 @retry(reraise=True,
-       retry=retry_if_exception_type(FireCloudServerError),
+       retry=retry_if_exception_type((FireCloudServerError, requests.ConnectionError)),
        stop=stop_after_attempt(5),
        wait=wait_exponential(multiplier=4, min=10, max=60),
        after=after_log(logger, logging.DEBUG),
