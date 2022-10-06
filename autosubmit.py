@@ -158,10 +158,10 @@ def check_entity_status_for_workflow(namespace, workspace, workflow, entity_name
   return False
 
 
-def ready_to_submit(batch, current, previous, entity_type, method_namespace):
+def ready_to_submit(batch, current, previous, entity_type, current_method_namespace, previous_method_namespace):
   logging.info(f"Checking {batch} status for previous ({previous}) and current ({current}) workflow...")
   current_submitted = check_entity_status_for_workflow(NAMESPACE, WORKSPACE, current, batch, entity_type,
-                                                        method_namespace)
+                                                        current_method_namespace)
   previous_succeeded = True
   if current_submitted:
     logging.info(f"{batch} already submitted for {current}")
@@ -169,7 +169,8 @@ def ready_to_submit(batch, current, previous, entity_type, method_namespace):
   else:
     if previous is not None:
       previous_succeeded = check_entity_status_for_workflow(NAMESPACE, WORKSPACE, previous, batch,
-                                                            entity_type, require_success=True)
+                                                            entity_type, previous_method_namespace,
+                                                            require_success=True)
     if previous_succeeded:
       logging.info(f"{batch} is ready to submit for {current}")
       return READY
@@ -180,23 +181,25 @@ def ready_to_submit(batch, current, previous, entity_type, method_namespace):
 
 def auto_submit(current, previous, interval, comment, output_log, retry=True,
                 batches=None, dry_run=False, submission_entity_type='sample_set', expression=None,
-                memory_retry_multiplier=None, call_cache=True, method_namespace=NAMESPACE):
+                memory_retry_multiplier=None, call_cache=True, current_method_namespace=NAMESPACE,
+                previous_method_namespace=NAMESPACE):
   num_batches = len(batches)
   to_retry = []
-  current_root_entity_type = _fapi_get_method_config(NAMESPACE, WORKSPACE, method_namespace, current).json()['rootEntityType']
+  current_root_entity_type = _fapi_get_method_config(NAMESPACE, WORKSPACE, current_method_namespace, current).json()['rootEntityType']
   if current_root_entity_type != submission_entity_type and expression is None:
     raise ValueError("Submission entity does not match workflow root entity type and no expression is provided")
   with open(output_log, 'a') as out:
     if retry:
       out.write("batch\ttimestamp\tworkflow\tsubmission_response\n")
     for i, batch in enumerate(batches):
-      batch_status = ready_to_submit(batch, current, previous, submission_entity_type, method_namespace)
+      batch_status = ready_to_submit(batch, current, previous, submission_entity_type, current_method_namespace,
+                                    previous_method_namespace)
       if batch_status == READY:
         logging.info(f"Ready to submit {current} for {batch} (dry run = {dry_run})")
         if dry_run:
           out.write(f"{batch}\t{datetime.datetime.now()}\t{current}\tDryRun\n")
         else:
-          sub_response = fiss_api.create_submission(NAMESPACE, WORKSPACE, method_namespace, current,
+          sub_response = fiss_api.create_submission(NAMESPACE, WORKSPACE, current_method_namespace, current,
                                                     entity=batch, etype=submission_entity_type, expression=expression,
                                                     delete_intermediate_output_files=True, user_comment=comment,
                                                     memory_retry_multiplier=memory_retry_multiplier, use_callcache=call_cache,
@@ -254,10 +257,10 @@ def main():
                       help="Memory retry multiplier, ie. 1.8")
   parser.add_argument("--call-cache", required=False, default=True, action='store_true',
                       help="Enable call caching")
-  parser.add_argument("-z","--method-namespace", required=False, default=None,
-                      help="Namespace for workflows, if different from workspace namespace. Note that "
-                      "previous and current workflows are assumed to have the same namespace. If this "
-                      "is not the case, either modify the workflow namespace or omit previous.")
+  parser.add_argument("-y","--current-method-namespace", required=False, default=None,
+                      help="Namespace for current workflow, if different from workspace namespace.")
+  parser.add_argument("-z","--previous-method-namespace", required=False, default=None,
+                      help="Namespace for previous workflow, if different from workspace namespace.")
   parser.add_argument("--dry-run", required=False, default=False, action='store_true',
                       help="Dry run: don't submit anything")
   parser.add_argument("-l", "--log-level", required=False, default="INFO",
@@ -279,13 +282,17 @@ def main():
   elif args.batches_file is not None:
     with open(args.batches_file, 'r') as bfile:
       batches = [line.strip() for line in bfile]
-  method_namespace = NAMESPACE
-  if args.method_namespace is not None:
-    method_namespace = args.method_namespace
+
+  current_method_namespace = NAMESPACE
+  if args.current_method_namespace is not None:
+    current_method_namespace = args.current_method_namespace
+  previous_method_namespace = NAMESPACE
+  if args.previous_method_namespace is not None:
+    previous_method_namespace = args.previous_method_namespace
   auto_submit(args.current, args.previous, args.interval, args.note, args.output_log, dry_run=args.dry_run,
               batches=batches, submission_entity_type=args.submission_entity_type, expression=args.expression,
               memory_retry_multiplier=args.memory_retry_multiplier, call_cache=args.call_cache,
-              method_namespace=method_namespace)
+              current_method_namespace=current_method_namespace, previous_method_namespace=previous_method_namespace)
 
 
 if __name__ == "__main__":
