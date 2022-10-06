@@ -113,6 +113,7 @@ def check_entity_status_for_workflow(namespace, workspace, workflow, entity_name
   response = _fapi_list_submissions(NAMESPACE, WORKSPACE)
   result = response.json()
   workflow_submissions = [sub for sub in result if sub['methodConfigurationName'] == workflow]
+  submissions_check_members = []
   for w_sub in workflow_submissions:
     w_sub_statuses = w_sub['workflowStatuses']
     submission_entity_type = w_sub['submissionEntity']['entityType']
@@ -144,15 +145,19 @@ def check_entity_status_for_workflow(namespace, workspace, workflow, entity_name
     # setA (+ setB + sample) to set
     # if entity_type is a set of submission type, check status for members of entity_name
     elif workflow_root_entity_type + "_set" == entity_type and workflow_root_entity_type + "_set" == submission_entity_type:
-      if entity_name_members is None:
-        entity_name_members = get_members_in_set(entity_type, entity_name)
-      detailed_response = _fapi_get_submission(namespace, workspace, w_sub['submissionId'])
-      detailed = detailed_response.json()
-      for w in detailed['workflows']:
-        if w['workflowEntity']['entityName'] in entity_name_members:
-          if require_success and w['status'] != "Succeeded":
-            continue
-          members_submitted.add(w['workflowEntity']['entityName'])
+      submissions_check_members.append(w_sub)  # check after the rest of the submissions - more efficient if member check not needed
+
+  for w_sub in submissions_check_members:
+    if entity_name_members is None:
+      entity_name_members = get_members_in_set(entity_type, entity_name)
+    detailed_response = _fapi_get_submission(namespace, workspace, w_sub['submissionId'])
+    detailed = detailed_response.json()
+    for w in detailed['workflows']:
+      if w['workflowEntity']['entityName'] in entity_name_members:
+        if require_success and w['status'] != "Succeeded":
+          continue
+        members_submitted.add(w['workflowEntity']['entityName'])
+
   if entity_name_members is not None and len(members_submitted) == len(entity_name_members):
     return True
   return False
