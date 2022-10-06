@@ -114,9 +114,10 @@ def check_entity_status_for_workflow(namespace, workspace, workflow, entity_name
   response = _fapi_list_submissions(NAMESPACE, WORKSPACE)
   result = response.json()
   workflow_submissions = [sub for sub in result if sub['methodConfigurationName'] == workflow]
+  if len(workflow_submissions) == 0:
+    logging.info(f"No submissions found for workflow {workflow}")
   submissions_check_members = []
   for w_sub in workflow_submissions:
-    print(w_sub['submissionEntity']['entityName'])
     w_sub_statuses = w_sub['workflowStatuses']
     submission_entity_type = w_sub['submissionEntity']['entityType']
     # set to set, sample to sample
@@ -128,7 +129,6 @@ def check_entity_status_for_workflow(namespace, workspace, workflow, entity_name
     # set_set to set, set to sample
     # if submission was batched and submission type is a set of entity_type, check workflows within for entity_name
     elif entity_type + "_set" == submission_entity_type:
-      print("Batched submission")
       detailed_response = _fapi_get_submission(namespace, workspace, w_sub['submissionId'])
       detailed = detailed_response.json()
       for w in detailed['workflows']:
