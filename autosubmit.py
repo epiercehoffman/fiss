@@ -161,19 +161,19 @@ def ready_to_submit(batch, current, previous, entity_type):
   logging.info(f"Checking {batch} status for previous ({previous}) and current ({current}) workflow...")
   current_submitted = check_entity_status_for_workflow(NAMESPACE, WORKSPACE, current, batch, entity_type)
   previous_succeeded = True
-  if previous is not None:
-    previous_succeeded = check_entity_status_for_workflow(NAMESPACE, WORKSPACE, previous, batch, 
-                                                          entity_type, require_success=True)
-  if previous_succeeded:
-    if current_submitted:
-      logging.info(f"{batch} already submitted for {current}")
-      return ALREADY_SUBMITTED
-    else:
+  if current_submitted:
+    logging.info(f"{batch} already submitted for {current}")
+    return ALREADY_SUBMITTED
+  else:
+    if previous is not None:
+      previous_succeeded = check_entity_status_for_workflow(NAMESPACE, WORKSPACE, previous, batch,
+                                                            entity_type, require_success=True)
+    if previous_succeeded:
       logging.info(f"{batch} is ready to submit for {current}")
       return READY
-  else:
-    logging.info(f"{batch} has not yet successfully completed {previous}")
-    return NOT_YET
+    else:
+      logging.info(f"{batch} has not yet successfully completed {previous}")
+      return NOT_YET
 
 
 def auto_submit(current, previous, interval, comment, output_log, retry=True,
