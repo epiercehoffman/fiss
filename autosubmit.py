@@ -105,6 +105,7 @@ def get_entities_submitted_for_workflow(namespace, workspace, workflow, require_
 
 def check_entity_status_for_workflow(namespace, workspace, workflow, entity_name, entity_type, method_namespace,
                                       require_success=False):
+  logging.info(f"Checking status of {workflow} for {entity_name}")
   workflow_root_entity_type = _fapi_get_method_config(NAMESPACE, WORKSPACE, method_namespace, workflow).json()['rootEntityType']
   if workflow_root_entity_type not in entity_type:
     raise ValueError(f"{workflow} workflow root entity type is not a match or subset of submission entity type {entity_type}. Unable to check status of {entity_name}.")
@@ -115,6 +116,7 @@ def check_entity_status_for_workflow(namespace, workspace, workflow, entity_name
   workflow_submissions = [sub for sub in result if sub['methodConfigurationName'] == workflow]
   submissions_check_members = []
   for w_sub in workflow_submissions:
+    print(w_sub['submissionEntity']['entityName'])
     w_sub_statuses = w_sub['workflowStatuses']
     submission_entity_type = w_sub['submissionEntity']['entityType']
     # set to set, sample to sample
@@ -126,6 +128,7 @@ def check_entity_status_for_workflow(namespace, workspace, workflow, entity_name
     # set_set to set, set to sample
     # if submission was batched and submission type is a set of entity_type, check workflows within for entity_name
     elif entity_type + "_set" == submission_entity_type:
+      print("Batched submission")
       detailed_response = _fapi_get_submission(namespace, workspace, w_sub['submissionId'])
       detailed = detailed_response.json()
       for w in detailed['workflows']:
