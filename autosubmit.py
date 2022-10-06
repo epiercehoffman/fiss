@@ -55,7 +55,7 @@ def _fapi_get_submission(namespace, workspace, submission_id):
        after=after_log(logger, logging.DEBUG),
        before_sleep=before_sleep_log(logger, logging.INFO))
 def _fapi_get_method_config(namespace, workspace, cnamespace, config):
-  response = fiss_api.get_workflow_config(namespace, workspace, cnamespace, config)
+  response = fiss_api.get_workspace_config(namespace, workspace, cnamespace, config)
   fiss_api._check_response_code(response, 200)
   return response
 
