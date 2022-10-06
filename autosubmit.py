@@ -223,7 +223,10 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True,
       elif batch_status == NOT_YET:
         to_retry.append(batch)
   if retry and len(to_retry) > 0:
-    auto_submit(current, previous, interval, comment, output_log, retry=False, batches=to_retry, dry_run=dry_run)
+    auto_submit(current, previous, interval, comment, output_log, retry=False, batches=to_retry, dry_run=dry_run,
+                submission_entity_type=submission_entity_type, expression=expression,
+                memory_retry_multiplier=memory_retry_multiplier, call_cache=call_cache,
+                current_method_namespace=current_method_namespace, previous_method_namespace=previous_method_namespace)
 
 
 def main():
@@ -257,9 +260,9 @@ def main():
                       help="Memory retry multiplier, ie. 1.8")
   parser.add_argument("--call-cache", required=False, default=True, action='store_true',
                       help="Enable call caching")
-  parser.add_argument("-z","--current-method-namespace", required=False, default=None,
+  parser.add_argument("-z", "--current-method-namespace", required=False, default=None,
                       help="Namespace for current workflow, if different from workspace namespace.")
-  parser.add_argument("-y","--previous-method-namespace", required=False, default=None,
+  parser.add_argument("-y", "--previous-method-namespace", required=False, default=None,
                       help="Namespace for previous workflow, if different from workspace namespace.")
   parser.add_argument("--dry-run", required=False, default=False, action='store_true',
                       help="Dry run: don't submit anything")
