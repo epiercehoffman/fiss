@@ -257,9 +257,9 @@ def main():
                       help="Memory retry multiplier, ie. 1.8")
   parser.add_argument("--call-cache", required=False, default=True, action='store_true',
                       help="Enable call caching")
-  parser.add_argument("-y","--current-method-namespace", required=False, default=None,
+  parser.add_argument("-z","--current-method-namespace", required=False, default=None,
                       help="Namespace for current workflow, if different from workspace namespace.")
-  parser.add_argument("-z","--previous-method-namespace", required=False, default=None,
+  parser.add_argument("-y","--previous-method-namespace", required=False, default=None,
                       help="Namespace for previous workflow, if different from workspace namespace.")
   parser.add_argument("--dry-run", required=False, default=False, action='store_true',
                       help="Dry run: don't submit anything")
