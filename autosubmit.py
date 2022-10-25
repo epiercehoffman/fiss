@@ -191,6 +191,8 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True,
                 batches=None, dry_run=False, submission_entity_type='sample_set', expression=None,
                 memory_retry_multiplier=None, call_cache=True, current_method_namespace=NAMESPACE,
                 previous_method_namespace=NAMESPACE, unsafe=False):
+  if unsafe:
+    logging.info("Unsafe mode enabled, will not check for previous submissions before submitting.")
   num_batches = len(batches)
   to_retry = []
   current_root_entity_type = _fapi_get_method_config(NAMESPACE, WORKSPACE, current_method_namespace, current).json()['rootEntityType']
