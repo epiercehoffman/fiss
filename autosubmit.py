@@ -190,7 +190,7 @@ def ready_to_submit(batch, current, previous, entity_type, current_method_namesp
 def auto_submit(current, previous, interval, comment, output_log, retry=True,
                 batches=None, dry_run=False, submission_entity_type='sample_set', expression=None,
                 memory_retry_multiplier=None, call_cache=True, current_method_namespace=NAMESPACE,
-                previous_method_namespace=NAMESPACE):
+                previous_method_namespace=NAMESPACE, unsafe=False):
   num_batches = len(batches)
   to_retry = []
   current_root_entity_type = _fapi_get_method_config(NAMESPACE, WORKSPACE, current_method_namespace, current).json()['rootEntityType']
@@ -200,8 +200,10 @@ def auto_submit(current, previous, interval, comment, output_log, retry=True,
     if retry:
       out.write("batch\ttimestamp\tworkflow\tsubmission_response\n")
     for i, batch in enumerate(batches):
-      batch_status = ready_to_submit(batch, current, previous, submission_entity_type, current_method_namespace,
-                                    previous_method_namespace)
+      batch_status = READY
+      if not unsafe:
+        batch_status = ready_to_submit(batch, current, previous, submission_entity_type, current_method_namespace,
+                                      previous_method_namespace)
       if batch_status == READY:
         logging.info(f"Ready to submit {current} for {batch} (dry run = {dry_run})")
         if dry_run:
@@ -266,12 +268,14 @@ def main():
                       "See help text for submission entity for example.")
   parser.add_argument("-m", "--memory-retry-multiplier", default=None, required=False, type=float,
                       help="Memory retry multiplier, ie. 1.8")
-  parser.add_argument("--call-cache", required=False, default=True, action='store_true',
-                      help="Enable call caching")
+  parser.add_argument("--no-call-cache", required=False, default=True, action='store_false',
+                      help="Do not enable call caching (call caching enabled by default)")
   parser.add_argument("-z", "--current-method-namespace", required=False, default=None,
                       help="Namespace for current workflow, if different from workspace namespace.")
   parser.add_argument("-y", "--previous-method-namespace", required=False, default=None,
                       help="Namespace for previous workflow, if different from workspace namespace.")
+  parser.add_argument("-u", "--unsafe", required=False, default=False, action='store_true',
+                      help="Do not check for previous submissions of current or preceding workflow.")
   parser.add_argument("--dry-run", required=False, default=False, action='store_true',
                       help="Dry run: don't submit anything")
   parser.add_argument("-l", "--log-level", required=False, default="INFO",
@@ -300,9 +304,12 @@ def main():
   previous_method_namespace = NAMESPACE
   if args.previous_method_namespace is not None:
     previous_method_namespace = args.previous_method_namespace
+
+  call_cache = not args.no_call_cache
+
   auto_submit(args.current, args.previous, args.interval, args.note, args.output_log, dry_run=args.dry_run,
               batches=batches, submission_entity_type=args.submission_entity_type, expression=args.expression,
-              memory_retry_multiplier=args.memory_retry_multiplier, call_cache=args.call_cache,
+              memory_retry_multiplier=args.memory_retry_multiplier, call_cache=call_cache, unsafe=args.unsafe,
               current_method_namespace=current_method_namespace, previous_method_namespace=previous_method_namespace)
 
 
